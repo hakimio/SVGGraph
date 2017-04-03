@@ -124,11 +124,10 @@ abstract class GridGraph extends Graph {
           $this->ArrayOption($this->label_font_size_v, 1),
           $this->label_font_size);
         if(is_null($grid_r)) {
-          $this->label_right_offset = $this->pad_right + $this->label_space +
-            $font_size;
-          $this->pad_right += $lines_right * $font_size + 2 * $this->label_space;
+          $this->label_right_offset = $this->pad_right + $font_size;
+          $this->pad_right += $lines_right * $font_size + $this->label_space;
         } else {
-          $this->label_right_offset = $this->label_space + $font_size;
+          $this->label_right_offset = $font_size;
         }
       }
       if($lines_left) {
@@ -136,11 +135,10 @@ abstract class GridGraph extends Graph {
           $this->ArrayOption($this->label_font_size_v, 0),
           $this->label_font_size);
         if(is_null($grid_l)) {
-          $this->label_left_offset = $this->pad_left + $this->label_space +
-            $font_size;
-          $this->pad_left += $lines_left * $font_size + 2 * $this->label_space;
+          $this->label_left_offset = $this->pad_left + $font_size;
+          $this->pad_left += $lines_left * $font_size + $this->label_space;
         } else {
-          $this->label_left_offset = $this->label_space + $font_size;
+          $this->label_left_offset = $font_size;
         }
       }
     }
@@ -149,12 +147,10 @@ abstract class GridGraph extends Graph {
       $font_size = $this->GetFirst($this->label_font_size_h,
         $this->label_font_size);
       if(is_null($grid_b)) {
-        $this->label_bottom_offset = $this->pad_bottom + $this->label_space +
-          $font_size * ($lines - 1);
-        $this->pad_bottom += $lines * $font_size + 2 * $this->label_space;
+        $this->label_bottom_offset = $this->pad_bottom + $font_size * ($lines - 1);
+        $this->pad_bottom += $lines * $font_size + $this->label_space;
       } else {
-        $this->label_bottom_offset = $this->label_space +
-          $font_size * ($lines - 1);
+        $this->label_bottom_offset = $font_size * ($lines - 1);
       }
     }
     $pad_l = $pad_r = $pad_b = $pad_t = 0;
