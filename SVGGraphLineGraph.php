@@ -87,6 +87,7 @@ class LineGraph extends PointGraph {
   public function DrawLine($dataset, $points, $y_bottom, $stroke_colour = false)
   {
     $attr = array('fill' => 'none');
+    $attr['stroke-linejoin'] = 'round';
     $fill = $this->ArrayOption($this->fill_under, $dataset);
     $dash = $this->ArrayOption($this->line_dash, $dataset);
     $stroke_width = $this->ArrayOption($this->line_stroke_width, $dataset);
