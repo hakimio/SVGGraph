@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2015-2016 Graham Breach
+ * Copyright (C) 2015-2017 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -80,13 +80,10 @@ class StackedGroupedCylinderGraph extends StackedCylinderGraph {
           $end_bar = isset($this->groups[$l + 1]) ? $this->groups[$l + 1] : $bar_count;
           $ypos = $yneg = 0;
 
-          // find greatest -/+ bar
-          $max_neg_bar = $max_pos_bar = -1;
-          for($j = $start_bar; $j < $end_bar; ++$j) {
-            if($itemlist[$j]->value > 0)
-              $max_pos_bar = $j;
-            else
-              $max_neg_bar = $j;
+          // make $end_bar the top visible bar
+          for($j = $end_bar - 1; $j > $start_bar; --$j) {
+            if(is_null($itemlist[$j]->value))
+              --$end_bar;
           }
           for($j = $start_bar; $j < $end_bar; ++$j) {
             $item = $itemlist[$j];
@@ -116,6 +113,9 @@ class StackedGroupedCylinderGraph extends StackedCylinderGraph {
               // set up legend
               $cstyle = array('fill' => $this->GetColour($item, $bnum, $j));
               $this->SetStroke($cstyle, $item, $j);
+
+              // store whether the bar can be seen or not
+              $this->bar_visibility[$j][$item->key] = ($t || $item->value != 0);
               $this->SetLegendEntry($j, $bnum, $item, $cstyle);
             }
           }

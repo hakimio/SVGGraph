@@ -647,11 +647,28 @@ abstract class PointGraph extends GridGraph {
    */
   protected function FormatTooltip(&$item, $dataset, $key, $value)
   {
-    $text = is_numeric($key) ? $this->units_before_tooltip_key .
-      Graph::NumString($key) . $this->units_tooltip_key : $key;
+    if($this->datetime_keys) {
+      $dt = new DateTime("@{$key}");
+      $text = $dt->Format($this->tooltip_datetime_format);
+    } elseif(is_numeric($key)) {
+      $text = $this->units_before_tooltip_key . Graph::NumString($key) .
+        $this->units_tooltip_key;
+    } else {
+      $text = $key;
+    }
+
     $text .= ', ' . $this->units_before_tooltip . Graph::NumString($value) .
       $this->units_tooltip;
     return $text;
+  }
+
+  /**
+   * Returns TRUE if the item is visible on the graph
+   */
+  public function IsVisible($item, $dataset = 0)
+  {
+    // non-null values should be visible
+    return !is_null($item->value);
   }
 }
 

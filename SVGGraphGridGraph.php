@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2009-2016 Graham Breach
+ * Copyright (C) 2009-2017 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -20,9 +20,6 @@
  */
 
 require_once 'SVGGraphAxis.php';
-
-define("SVGG_GUIDELINE_ABOVE", 1);
-define("SVGG_GUIDELINE_BELOW", 0);
 
 abstract class GridGraph extends Graph {
 
@@ -520,6 +517,11 @@ abstract class GridGraph extends Graph {
       $this->CalcGuidelines();
 
     $v_max = $v_min = $k_max = $k_min = array();
+    $g_min_x = $g_min_y = $g_max_x = $g_max_y = NULL;
+
+    if(!is_null($this->guidelines)) {
+      list($g_min_x, $g_min_y, $g_max_x, $g_max_y) = $this->guidelines->GetMinMax();
+    }
     $y_axis_count = $this->YAxisCount();
     $x_axis_count = $this->XAxisCount();
     if($this->flip_axes) {
@@ -547,8 +549,8 @@ abstract class GridGraph extends Graph {
         $v_min[] = $fixed_min;
       } else {
         $minv_list = array($this->GetAxisMinValue($i));
-        if(!is_null($this->min_guide['y']))
-          $minv_list[] = (float)$this->min_guide['y'];
+        if(!is_null($g_min_y))
+          $minv_list[] = (float)$g_min_y;
 
         // if not a log axis, start at 0
         if(!$this->ArrayOption($this->log_axis_y, $i))
@@ -560,8 +562,8 @@ abstract class GridGraph extends Graph {
         $v_max[] = $fixed_max;
       } else {
         $maxv_list = array($this->GetAxisMaxValue($i));
-        if(!is_null($this->max_guide['y']))
-          $maxv_list[] = (float)$this->max_guide['y'];
+        if(!is_null($g_max_y))
+          $maxv_list[] = (float)$g_max_y;
 
         // if not a log axis, start at 0
         if(!$this->ArrayOption($this->log_axis_y, $i))
@@ -579,7 +581,11 @@ abstract class GridGraph extends Graph {
       if($this->datetime_keys) {
         // 0 is 1970-01-01, not a useful minimum
         if(empty($fixed_max)) {
-          $k_max[] = $this->GetAxisMaxKey($i);
+          // guidelines support datetime values too
+          if(!is_null($g_max_x))
+            $k_max[] = max($this->GetAxisMaxKey($i), $g_max_x);
+          else
+            $k_max[] = $this->GetAxisMaxKey($i);
         } else {
           $d = SVGGraphDateConvert($fixed_max);
           // subtract a se
@@ -589,7 +595,10 @@ abstract class GridGraph extends Graph {
             throw new Exception("Could not convert [{$fixed_max}] to datetime");
         }
         if(empty($fixed_min)) {
-          $k_min[] = $this->GetAxisMinKey($i);
+          if(!is_null($g_min_x))
+            $k_min[] = min($this->GetAxisMinKey($i), $g_min_x);
+          else
+            $k_min[] = $this->GetAxisMinKey($i);
         } else {
           $d = SVGGraphDateConvert($fixed_min);
           if(!is_null($d))
@@ -606,11 +615,11 @@ abstract class GridGraph extends Graph {
         if(is_numeric($fixed_max))
           $k_max[] = $fixed_max;
         else
-          $k_max[] = max(0, $this->GetAxisMaxKey($i), (float)$this->max_guide['x']);
+          $k_max[] = max(0, $this->GetAxisMaxKey($i), (float)$g_max_x);
         if(is_numeric($fixed_min))
           $k_min[] = $fixed_min;
         else
-          $k_min[] = min(0, $this->GetAxisMinKey($i), (float)$this->min_guide['x']);
+          $k_min[] = min(0, $this->GetAxisMinKey($i), (float)$g_min_x);
       }
       if($k_max[$i] < $k_min[$i])
         throw new Exception("Invalid X axis: min > max ({$k_min[$i]} > {$k_max[$i]})");
@@ -1092,10 +1101,7 @@ abstract class GridGraph extends Graph {
     $text_space = $this->GetFirst(
       $this->ArrayOption($this->axis_text_space_v, $axis_no),
       $this->axis_text_space);
-    $text_centre = $font_size * 0.3;
     $label_centre_y = $this->label_centre && $this->flip_axes;
-    $x_rotate_offset = $inside ? $text_centre : -$text_centre;
-    $y_rotate_offset = -$text_centre;
     $x = $xoff + $text_space;
     if(!$inside)
       $x = -$x;
@@ -1114,17 +1120,27 @@ abstract class GridGraph extends Graph {
         $key = '';
 
       if(SVGGraphStrlen($key, $this->encoding) && (++$p < $count || !$label_centre_y)) {
+        // get unrotated width and height first
+        list($t_width, $t_height) = $this->TextSize($key, $font_size,
+          $font_adjust, $this->encoding, 0, $font_size);
+        $text_centre = $font_size * 0.8 - $t_height * 0.5;
         $position['y'] = $y + $text_centre + $yoff;
+
         if($angle != 0) {
-          $rcx = $position['x'] + $x_rotate_offset;
-          $rcy = $position['y'] + $y_rotate_offset;
+          list($tr_width, $tr_height) = $this->TextSize($key, $font_size,
+            $font_adjust, $this->encoding, $angle, $font_size);
+
+          // axes of rotation are Y position and half height away from
+          // start/end of text
+          $rcx = $position['x'] + $t_height * ($inside ? 0.5 : -0.5);
+          $rcy = $y + $yoff;
           $position['transform'] = compact('angle', 'rcx', 'rcy');
+          $t_width = $tr_width;
+          $t_height = $tr_height;
         }
-        $size = $this->TextSize((string)$key, $font_size, $font_adjust, 
-          $this->encoding, $angle, $font_size);
         $position['text'] = $key;
-        $position['w'] = $size[0];
-        $position['h'] = $size[1];
+        $position['w'] = $t_width;
+        $position['h'] = $t_height;
         $positions[] = $position;
       }
       $y_prev = $y;
@@ -1610,13 +1626,13 @@ abstract class GridGraph extends Graph {
         $base_x = " base=\"{$this->log_axis_y_base}\"";
         $zero_x = $x_axis->Value(0);
         $scale_x = $x_axis->Value($this->g_width);
-        $this->AddFunction('logStrValueX');
+        $this->javascript->AddFunction('logStrValueX');
         $function_x = 'logStrValueX';
       } else {
         $base_y = " base=\"{$this->log_axis_y_base}\"";
         $zero_y = $y_axis->Value(0);
         $scale_y = $y_axis->Value($this->g_height);
-        $this->AddFunction('logStrValueY');
+        $this->javascript->AddFunction('logStrValueY');
         $function_y = 'logStrValueY';
       }
     }
@@ -1630,7 +1646,7 @@ abstract class GridGraph extends Graph {
         $scale_y = ($ey - $zy) / $this->g_height;
         $dt = new DateTime('@' . $zy);
         $zero_y = $dt->Format('c');
-        $this->AddFunction('dateStrValueY');
+        $this->javascript->AddFunction('dateStrValueY');
         $function_y = 'dateStrValueY';
         $extra_y = ' format="' .
           htmlspecialchars($y_axis->GetFormat(), ENT_COMPAT,
@@ -1641,7 +1657,7 @@ abstract class GridGraph extends Graph {
         $scale_x = ($ex - $zx) / $this->g_width;
         $dt = new DateTime('@' . $zx);
         $zero_x = $dt->Format('c');
-        $this->AddFunction('dateStrValueX');
+        $this->javascript->AddFunction('dateStrValueX');
         $function_x = 'dateStrValueX';
         $extra_x = ' format="' .
           htmlspecialchars($x_axis->GetFormat(), ENT_COMPAT,
@@ -1666,15 +1682,15 @@ abstract class GridGraph extends Graph {
       $round_function = 'kround';
       if($this->label_centre)
         $round_function = 'kroundDown';
-      $this->AddFunction($round_function);
+      $this->javascript->AddFunction($round_function);
 
       // set the string function
       if($this->flip_axes) {
-        $this->AddFunction('keyStrValueY');
+        $this->javascript->AddFunction('keyStrValueY');
         $function_y = 'keyStrValueY';
         $extra_y = " round=\"{$round_function}\"";
       } else {
-        $this->AddFunction('keyStrValueX');
+        $this->javascript->AddFunction('keyStrValueX');
         $function_x = 'keyStrValueX';
         $extra_x = " round=\"{$round_function}\"";
       }
@@ -1693,7 +1709,7 @@ XML;
     $this->defs[] = $defs;
 
     // add the main function at the end - it can fill in any defaults
-    $this->AddFunction('crosshairs');
+    $this->javascript->AddFunction('crosshairs');
     return $crosshairs;
   }
 
@@ -1973,270 +1989,32 @@ XML;
   /**
    * Converts guideline options to more useful member variables
    */
-  protected function CalcGuidelines($g = null)
+  protected function CalcGuidelines()
   {
-    if(is_null($this->guidelines))
-      $this->guidelines = array();
-    if(is_null($g)) {
-      // no guidelines?
-      if(empty($this->guideline) && $this->guideline !== 0)
-        return;
+    // no guidelines?
+    if(empty($this->guideline) && $this->guideline !== 0)
+      return;
 
-      if(is_array($this->guideline) &&
-        is_array($this->guideline[0]) ||
-        (count($this->guideline) > 1 && !is_string($this->guideline[1]))) {
-
-        // array of guidelines
-        foreach($this->guideline as $gl)
-          $this->CalcGuidelines($gl);
-        return;
-      }
-
-      // single guideline
-      $g = $this->guideline;
-    }
-
-    if(!is_array($g))
-      $g = array($g);
-
-    $value = $g[0];
-    $axis = (isset($g[2]) && ($g[2] == 'x' || $g[2] == 'y')) ? $g[2] : 'y';
-    $above = isset($g['above']) ? $g['above'] : $this->guideline_above;
-    $position = $above ? SVGG_GUIDELINE_ABOVE : SVGG_GUIDELINE_BELOW;
-    $guideline = array(
-      'value' => $value,
-      'depth' => $position,
-      'title' => isset($g[1]) ? $g[1] : '',
-      'axis' => $axis
-    );
-    $lopts = $topts = array();
-    $line_opts = array(
-      'colour' => 'stroke',
-      'dash' => 'stroke-dasharray',
-      'stroke_width' => 'stroke-width',
-      'opacity' => 'opacity',
-
-      // not SVG attributes
-      'length' => 'length',
-      'length_units' => 'length_units',
-    );
-    $text_opts = array(
-      'colour' => 'fill',
-      'opacity' => 'opacity',
-      'font' => 'font-family',
-      'font_size' => 'font-size',
-      'font_weight' => 'font-weight',
-      'text_colour' => 'fill', // overrides 'colour' option from line
-      'text_opacity' => 'opacity', // overrides line opacity
-
-      // these options do not map to SVG attributes
-      'font_adjust' => 'font_adjust',
-      'text_position' => 'text_position',
-      'text_padding' => 'text_padding',
-      'text_angle' => 'text_angle',
-      'text_align' => 'text_align',
-    );
-    foreach($line_opts as $okey => $opt)
-      if(isset($g[$okey]))
-        $lopts[$opt] = $g[$okey];
-    foreach($text_opts as $okey => $opt)
-      if(isset($g[$okey]))
-        $topts[$opt] = $g[$okey];
-
-    if(count($lopts))
-      $guideline['line'] = $lopts;
-    if(count($topts))
-      $guideline['text'] = $topts;
-
-    // update maxima and minima
-    if(is_null($this->max_guide[$axis]) || $value > $this->max_guide[$axis])
-      $this->max_guide[$axis] = $value;
-    if(is_null($this->min_guide[$axis]) || $value < $this->min_guide[$axis])
-      $this->min_guide[$axis] = $value;
-
-    // can flip the axes now the min/max are stored
-    if($this->flip_axes)
-      $guideline['axis'] = ($guideline['axis'] == 'x' ? 'y' : 'x');
-
-    $this->guidelines[] = $guideline;
-  }
-
-  /**
-   * Returns the elements to draw the guidelines
-   */
-  protected function Guidelines($depth)
-  {
-    if(empty($this->guidelines))
-      return '';
-
-    // build all the lines at this depth (above/below) that use
-    // global options as one path
-    $d = $lines = $text = '';
-    $path = array(
-      'stroke' => $this->guideline_colour,
-      'stroke-width' => $this->guideline_stroke_width,
-      'stroke-dasharray' => $this->guideline_dash,
-      'fill' => 'none'
-    );
-    if($this->guideline_opacity != 1)
-      $path['opacity'] = $this->guideline_opacity;
-    $textopts = array(
-      'font-family' => $this->guideline_font,
-      'font-size' => $this->guideline_font_size,
-      'font-weight' => $this->guideline_font_weight,
-      'fill' => $this->GetFirst($this->guideline_text_colour, 
-        $this->guideline_colour),
-    );
-    $text_opacity = $this->GetFirst($this->guideline_text_opacity, 
-      $this->guideline_opacity);
-
-    foreach($this->guidelines as $line) {
-      if($line['depth'] == $depth) {
-        // opacity cannot go in the group because child opacity is multiplied
-        // by group opacity
-        if($text_opacity != 1 && !isset($line['text']['opacity']))
-          $line['text']['opacity'] = $text_opacity;
-        $this->BuildGuideline($line, $lines, $text, $path, $d);
-      }
-    }
-    if(!empty($d)) {
-      $path['d'] = $d;
-      $lines .= $this->Element('path', $path);
-    }
-
-    if(!empty($text))
-      $text = $this->Element('g', $textopts, null, $text);
-    return $lines . $text;
-  }
-
-  /**
-   * Adds a single guideline and its title to content
-   */
-  protected function BuildGuideline(&$line, &$lines, &$text, &$path, &$d)
-  {
-    $length = $this->guideline_length;
-    $length_units = $this->guideline_length_units;
-    if(isset($line['line'])) {
-      $this->UpdateAndUnset($length, $line['line'], 'length');
-      $this->UpdateAndUnset($length_units, $line['line'], 'length_units');
-    }
-    if($length != 0) {
-      if($line['axis'] == 'x')
-        $h = $length;
-      else
-        $w = $length;
-    } elseif($length_units != 0) {
-      if($line['axis'] == 'x')
-        $h = $length_units * $this->y_axes[$this->main_y_axis]->Unit();
-      else
-        $w = $length_units * $this->x_axes[$this->main_x_axis]->Unit();
-    }
-
-    $path_data = $this->GuidelinePath($line['axis'], $line['value'],
-      $line['depth'], $x, $y, $w, $h);
-    if(!isset($line['line'])) {
-      // no special options, add to main path
-      $d .= $path_data;
-    } else {
-      $line_path = array_merge($path, $line['line'], array('d' => $path_data));
-      $lines .= $this->Element('path', $line_path);
-    }
-    if(!empty($line['title'])) {
-      $text_pos = $this->guideline_text_position;
-      $text_pad = $this->guideline_text_padding;
-      $text_angle = $this->guideline_text_angle;
-      $text_align = $this->guideline_text_align;
-      $font_size = $this->guideline_font_size;
-      $font_adjust = $this->guideline_font_adjust;
-      if(isset($line['text'])) {
-        $this->UpdateAndUnset($text_pos, $line['text'], 'text_position');
-        $this->UpdateAndUnset($text_pad, $line['text'], 'text_padding');
-        $this->UpdateAndUnset($text_angle, $line['text'], 'text_angle');
-        $this->UpdateAndUnset($text_align, $line['text'], 'text_align');
-        $this->UpdateAndUnset($font_adjust, $line['text'], 'font_adjust');
-        if(isset($line['text']['font-size']))
-          $font_size = $line['text']['font-size'];
-      }
-      list($text_w, $text_h) = $this->TextSize($line['title'], 
-        $font_size, $font_adjust, $this->encoding, $text_angle, $font_size);
-
-      list($x, $y, $text_pos_align) = Graph::RelativePosition(
-        $text_pos, $y, $x, $y + $h, $x + $w,
-        $text_w, $text_h, $text_pad, true);
-
-      $t = array('x' => $x, 'y' => $y + $font_size);
-      if(empty($text_align) && $text_pos_align != 'start') {
-        $t['text-anchor'] = $text_pos_align;
-      } else {
-        $align_map = array('right' => 'end', 'centre' => 'middle');
-        if(isset($align_map[$text_align]))
-          $t['text-anchor'] = $align_map[$text_align];
-      }
-
-      if($text_angle != 0) {
-        $rx = $x + $text_h/2;
-        $ry = $y + $text_h/2;
-        $t['transform'] = "rotate($text_angle,$rx,$ry)";
-      }
-
-      if(isset($line['text']))
-        $t = array_merge($t, $line['text']);
-      $text .= $this->Text($line['title'], $font_size, $t);
-    }
-  }
-
-  /**
-   * Creates the path data for a guideline and sets the dimensions
-   */
-  protected function GuidelinePath($axis, $value, $depth, &$x, &$y, &$w, &$h)
-  {
-    if($axis == 'x') {
-      $x = $this->GridX($value);
-      $y = $this->height - $this->pad_bottom - $this->g_height;
-      $w = 0;
-      if($h == 0) {
-        $h = $this->g_height;
-      } elseif($h < 0) {
-        $h = -$h;
-      } else {
-        $y = $this->height - $this->pad_bottom - $h;
-      }
-      return "M$x {$y}v$h";
-    } else {
-      $x = $this->pad_left;
-      $y = $this->GridY($value);
-      if($w == 0) {
-        $w = $this->g_width;
-      } elseif($w < 0) {
-        $w = -$w;
-        $x = $this->pad_left + $this->g_width - $w;
-      }
-      $h = 0;
-      return "M$x {$y}h$w";
-    }
+    require_once 'SVGGraphGuidelines.php';
+    $this->guidelines = new Guidelines($this->settings, $this, $this->flip_axes,
+      $this->values->AssociativeKeys(), $this->datetime_keys);
   }
 
   public function UnderShapes()
   {
     $content = parent::UnderShapes();
-    return $content . $this->Guidelines(SVGG_GUIDELINE_BELOW);
+    if(!is_null($this->guidelines))
+      $content .= $this->guidelines->GetBelow();
+    return $content;
   }
 
   public function OverShapes()
   {
     $content = parent::OverShapes();
-    return $content . $this->Guidelines(SVGG_GUIDELINE_ABOVE);
+    if(!is_null($this->guidelines))
+      $content .= $this->guidelines->GetAbove();
+    return $content;
   }
 
-  /**
-   * Updates $var with $array[$key] and removes it from array
-   */
-  protected function UpdateAndUnset(&$var, &$array, $key)
-  {
-    if(isset($array[$key])) {
-      $var = $array[$key];
-      unset($array[$key]);
-    }
-  }
 }
 

@@ -19,7 +19,7 @@
  * For more information, please contact <graham@goat1000.com>
  */
 
-define('SVGGRAPH_VERSION', 'SVGGraph 2.24');
+define('SVGGRAPH_VERSION', 'SVGGraph 2.24.1');
 
 require_once 'SVGGraphColours.php';
 
@@ -269,6 +269,14 @@ abstract class Graph {
    */
   public function __get($name)
   {
+    if('javascript' == $name) {
+      // $this->javascript will forward to the static Graph::$javascript
+      if(!isset(Graph::$javascript)) {
+        include_once 'SVGGraphJavascript.php';
+        Graph::$javascript = new SVGGraphJavascript($this->settings, $this);
+      }
+      return Graph::$javascript;
+    }
     $this->{$name} = isset($this->settings[$name]) ? $this->settings[$name] : null;
     return $this->{$name};
   }
@@ -789,7 +797,8 @@ abstract class Graph {
         if($line == '')
           $line = ' ';
 
-        $content .= $this->Element('tspan', $tspan, NULL, $line);
+        // trim because spaces in text are significant
+        $content .= trim($this->Element('tspan', $tspan, NULL, $line));
         $tspan['dy'] = $line_spacing;
       }
     }
@@ -798,28 +807,32 @@ abstract class Graph {
 
   /**
    * Returns [width,height] of text 
-   * $text = string OR text length
    */
   public static function TextSize($text, $font_size, $font_adjust, $encoding,
     $angle = 0, $line_spacing = 0)
   {
     $height = $font_size;
-    if(is_int($text)) {
-      $len = $text;
+    if(!is_string($text)) {
+      if(is_numeric($text))
+        $text = Graph::NumString($text);
+      else
+        $text = (string)$text;
     } else {
       // replace all entities with an underscore (just for measurement)
       $text = preg_replace('/&[^;]+;/', '_', $text);
-      if($line_spacing > 0) {
-        $len = 0;
-        $lines = explode("\n", $text);
-        foreach($lines as $l)
-          if(SVGGraphStrlen($l, $encoding) > $len)
-            $len = SVGGraphStrlen($l, $encoding);
-        $height += $line_spacing * (count($lines) - 1);
-      } else {
-        $len = SVGGraphStrlen($text, $encoding);
-      }
     }
+
+    if($line_spacing > 0) {
+      $len = 0;
+      $lines = explode("\n", $text);
+      foreach($lines as $l)
+        if(SVGGraphStrlen($l, $encoding) > $len)
+          $len = SVGGraphStrlen($l, $encoding);
+      $height += $line_spacing * (count($lines) - 1);
+    } else {
+      $len = SVGGraphStrlen($text, $encoding);
+    }
+
     $width = $len * $font_size * $font_adjust;
     if($angle % 180 != 0) {
       if($angle % 90 == 0) {
@@ -969,6 +982,15 @@ abstract class Graph {
   }
 
   /**
+   * Returns TRUE if the item is visible on the graph
+   */
+  public function IsVisible($item, $dataset = 0)
+  {
+    // default implementation is for all non-zero values to be visible
+    return ($item->value != 0);
+  }
+
+  /**
    * Sets up the colour class
    */
   protected function ColourSetup($count, $datasets = NULL)
@@ -1055,6 +1077,8 @@ abstract class Graph {
    */
   public static function ArrayOption($o, $i)
   {
+    if(!is_numeric($i))
+      $i = 0;
     return is_array($o) ? $o[$i % count($o)] : $o;
   }
 
@@ -1106,46 +1130,6 @@ abstract class Graph {
   public function AddBackMatter($fragment)
   {
     $this->back_matter .= $fragment;
-  }
-
-  /**
-   * Loads the Javascript class
-   */
-  private function LoadJavascript()
-  {
-    if(!isset(Graph::$javascript)) {
-      include_once 'SVGGraphJavascript.php';
-      Graph::$javascript = new SVGGraphJavascript($this->settings, $this);
-    }
-  }
-
-  /**
-   * Adds a javascript function
-   */
-  protected function AddFunction($name, $realname = NULL)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->AddFunction($name, $realname);
-  }
-
-  /**
-   * Adds a Javascript variable
-   * - use $value:$more for assoc
-   * - use null:$more for array
-   */
-  public function InsertVariable($var, $value, $more = NULL, $quote = TRUE)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->InsertVariable($var, $value, $more, $quote);
-  }
-
-  /**
-   * Insert a comment into the Javascript section - handy for debugging!
-   */
-  public function InsertComment($details)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->InsertComment($details);
   }
 
   /**
@@ -1249,34 +1233,6 @@ abstract class Graph {
   }
 
   /**
-   * Adds an inline event handler to an element's array
-   */
-  protected function AddEventHandler(&$array, $evt, $code)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->AddEventHandler($array, $evt, $code);
-  }
-
-  /**
-   * Makes an item draggable
-   */
-  public function SetDraggable(&$element)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->SetDraggable($element);
-  }
-
-  /**
-   * Makes something auto-hide
-   */
-  public function AutoHide(&$element)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->AutoHide($element);
-  }
-
-
-  /**
    * Default tooltip contents are key and value, or whatever
    * $key is if $value is not set
    */
@@ -1296,7 +1252,7 @@ abstract class Graph {
     if(is_null($text))
       return;
     $text = addslashes(str_replace("\n", '\n', $text));
-    Graph::$javascript->SetTooltip($element, $text, $duplicate);
+    return $this->javascript->SetTooltip($element, $text, $duplicate);
   }
 
   /**
@@ -1306,48 +1262,6 @@ abstract class Graph {
   {
     return $this->units_before_tooltip . Graph::NumString($value) .
       $this->units_tooltip;
-  }
-
-
-  /**
-   * Sets the fader for an element
-   * @param array &$element Element that should cause fading
-   * @param number $in Fade in speed
-   * @param number $out Fade out speed
-   * @param string $id ID of element to be faded
-   * @param bool $duplicate TRUE to create transparent overlay
-   */
-  protected function SetFader(&$element, $in, $out, $target = NULL,
-    $duplicate = FALSE)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->SetFader($element, $in, $out, $target, $duplicate);
-  }
-
-  /**
-   * Sets click visibility for $target when $element is clicked
-   */
-  protected function SetClickShow(&$element, $target, $hidden,
-    $duplicate = FALSE)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->SetClickShow($element, $target, $hidden, $duplicate);
-  }
-
-  public function SetPopFront(&$element, $target, $duplicate = FALSE)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->SetPopFront($element, $target, $duplicate);
-  }
-
-  /**
-   * Add an overlaid copy of an element, with opacity of 0
-   * $from and $to are the IDs of the source and destination
-   */
-  protected function AddOverlay($from, $to)
-  {
-    $this->LoadJavascript();
-    Graph::$javascript->AddOverlay($from, $to);
   }
 
   /**
@@ -1371,20 +1285,21 @@ abstract class Graph {
     $popup = $this->ArrayOption($this->data_label_popfront, $dataset);
     if($click == 'hide' || $click == 'show') {
       $id = $this->NewID();
-      $this->SetClickShow($element, $id, $click == 'hide',
+      $this->javascript->SetClickShow($element, $id, $click == 'hide',
         $duplicate && !$this->compat_events);
     }
     if($popup) {
       if(!$id)
         $id = $this->NewID();
-      $this->SetPopFront($element, $id, $duplicate && !$this->compat_events);
+      $this->javascript->SetPopFront($element, $id,
+        $duplicate && !$this->compat_events);
     }
     if($fade_in || $fade_out) {
       $speed_in = $fade_in ? $fade_in / 100 : 0;
       $speed_out = $fade_out ? $fade_out / 100 : 0;
       if(!$id)
         $id = $this->NewID();
-      $this->SetFader($element, $speed_in, $speed_out, $id,
+      $this->javascript->SetFader($element, $speed_in, $speed_out, $id,
         $duplicate && !$this->compat_events);
     }
     $this->data_labels->AddLabel($dataset, $index, $item, $x, $y, $w, $h, $id,
@@ -1529,9 +1444,6 @@ abstract class Graph {
   private function BuildGraph()
   {
     $this->CheckValues($this->values);
-
-    if($this->show_tooltips)
-      $this->LoadJavascript();
 
     // body content comes from the subclass
     return $this->DrawGraph();
@@ -1757,8 +1669,7 @@ abstract class Graph {
   public static function min(&$a)
   {
     $min = null;
-    reset($a);
-    while(list(,$v) = each($a)) {
+    foreach($a as $v) {
       if(!is_null($v) && (is_null($min) || $v < $min))
         $min = $v;
     }

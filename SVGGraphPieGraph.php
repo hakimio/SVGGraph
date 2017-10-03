@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2009-2016 Graham Breach
+ * Copyright (C) 2009-2017 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -207,9 +207,15 @@ class PieGraph extends Graph {
         $angle_end, $radius_x, $radius_y);
 
       $parts = array();
-      if($this->show_label_key)
-        $parts = explode("\n", $this->GetKey($this->values->AssociativeKeys() ? 
-          $original_position : $key));
+      if($this->show_label_key) {
+        $label_key = $this->GetKey($this->values->AssociativeKeys() ?
+          $original_position : $key);
+        if($this->datetime_keys) {
+          $dt = new DateTime("@{$label_key}");
+          $label_key = $dt->Format($this->data_label_datetime_format);
+        }
+        $parts = explode("\n", $label_key);
+      }
       if($this->show_label_amount)
         $parts[] = $this->units_before_label . Graph::NumString($value) .
           $this->units_label;
@@ -267,7 +273,7 @@ class PieGraph extends Graph {
     $angle_end += $this->s_angle;
     $this->CalcSlice($angle_start, $angle_end, $radius_x, $radius_y,
       $x_start, $y_start, $x_end, $y_end);
-    if($single_slice) {
+    if($single_slice && $this->full_angle >= M_PI * 2.0) {
       $attr['cx'] = $this->x_centre;
       $attr['cy'] = $this->y_centre;
       $attr['rx'] = $radius_x;
@@ -330,8 +336,11 @@ class PieGraph extends Graph {
       throw new Exception('Negative value for pie chart');
 
     $sum = 0;
-    foreach($this->values[0] as $item)
+    foreach($this->values[0] as $item) {
+      if(!is_null($item->value) && !is_numeric($item->value))
+        throw new Exception('Non-numeric value');
       $sum += $item->value;
+    }
     if($sum <= 0)
       throw new Exception('Empty pie chart');
 

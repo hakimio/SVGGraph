@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2016 Graham Breach
+ * Copyright (C) 2016-2017 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -29,6 +29,7 @@ class SVGGraphLegend {
   private $reverse = FALSE;
   private $entries = array();
   private $type = 'all';
+  private $show_empty = false;
 
   public function __construct(&$graph, $reverse)
   {
@@ -36,6 +37,7 @@ class SVGGraphLegend {
     $this->legend_entries = $graph->legend_entries;
     $this->reverse = $reverse;
     $this->type = $graph->legend_type;
+    $this->show_empty = $graph->legend_show_empty;
   }
 
   /**
@@ -60,6 +62,10 @@ class SVGGraphLegend {
    */
   public function SetEntry($dataset, $index, $item, $style_info)
   {
+    // ignore entry if empty and legend_show_empty not enabled
+    if(!$this->show_empty && !$this->graph->IsVisible($item, $dataset))
+      return;
+
     // find the text first
     $text = '';
     $entry = count($this->entries);
@@ -272,9 +278,9 @@ class SVGGraphLegend {
     }
 
     if($this->legend_autohide)
-      $this->graph->AutoHide($group);
+      $this->graph->javascript->AutoHide($group);
     if($this->legend_draggable)
-      $this->graph->SetDraggable($group);
+      $this->graph->javascript->SetDraggable($group);
     return $this->graph->Element('g', $group, NULL, $rect . $title . $parts);
   }
 
