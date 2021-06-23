@@ -127,6 +127,7 @@ class LineGraph extends PointGraph {
       $dash = $this->getOption(['line_dash', $dataset]);
       $stroke_width = $this->getOption(['line_stroke_width', $dataset]);
       $attr = ['fill' => 'none'];
+      $attr['stroke-linejoin'] = 'round';
 
       $cg = new ColourGroup($this, null, 0, $dataset);
       $attr['stroke'] = $cg->stroke();
