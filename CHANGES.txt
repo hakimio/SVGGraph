@@ -1,3 +1,172 @@
+Version 3.9 (24/05/2021)
+-----------
+- Added support for linking legend entries and title.
+- Added axis_ticks_x and axis_ticks_y options for specific tick marks.
+- Added legend_autohide_opacity option.
+- Added autohide and autohide_opacity options for shapes.
+- Added grid stroke width options.
+
+Version 3.8 (23/02/2021)
+-----------
+- Added SteppedLineGraph and MultiSteppedLineGraph graph types.
+- Added force_block_label_x option.
+- Added axis_zero_y option.
+- Added data_label_opacity option.
+- Added various line spacing options.
+- Added localization of date strings.
+- Improved timezone support for date/time values.
+- Fixed axis label position on graphs with negative values.
+- Fixed date conversion problems in guideline positions.
+- Fixed empty legend entry on multi-line graphs with single point in dataset.
+
+Version 3.7 (27/11/2020)
+-----------
+- Added options for displaying mean average lines.
+- Added background shadow support.
+- Added graph subtitle options.
+- Added alternative Y-axis fitting algorithm with axis_tightness_y option.
+- Updated axis_label_position options to support aligning text with axis ends.
+- Updated colourRangeHex functions to support more colour options.
+
+Version 3.6 (19/06/2020)
+-----------
+- Added support for multi-level axis division labels.
+- Added axis_font_weight option and its horizontal and vertical options.
+- Added axis_text_back_colour option and horizontal, vertical options.
+- Fixed display of axis lines when using a gradient.
+- Fixed crosshairs not hiding when cursor leaves grid.
+- Fixed link_target and link_base options not working.
+
+Version 3.5 (07/03/2020)
+-----------
+- Added support for saturation, brightness and hue colour filters.
+- Added support for using fill colour or style in best-fit lines.
+- Added support for using fill colour or style in box and whisker median line.
+- Added support for using gradients in patterns.
+- Added legend_unique_fields option for preventing duplicate legend text.
+- Added legend_entries option callback for more control over legend entries.
+
+Version 3.4 (20/12/2019)
+-----------
+- Added SVG filter based shadows and options for adjusting them.
+- Added legend spacing and padding options.
+- Added support for stroking graph, tooltip, legend and label lines using
+  gradients and patterns.
+- Added support for stroking graph lines using fill colour or fill style.
+- Added support for filling markers with gradients and patterns.
+- Added support for displaying gradients in radar graph grid stripes.
+- Added simple Javascript minifier function.
+- Fixed 3D bar graphs having spiky corners at the top.
+- Fixed histogram X-axis being truncated.
+- Fixed 3D pie graph side shading drawing over edges.
+- Fixed lousy axis top end calculation when non-zero bottom end specified.
+- Fixed legend entries not showing for floating graph bars starting at zero.
+
+Version 3.3 (22/11/2019)
+-----------
+- Added ArrayGraph type for simple multiple-graph documents.
+- Added dataset option support to all graph types.
+- Added bar_round option for rounded corners on bar graphs.
+- Added median_colour and median_dash options for box and whisker graphs.
+
+Version 3.2 (26/09/2019)
+-----------
+- Added axis_label_position options.
+- Added legend_order option.
+- Added axis_fallback_max option for better handling of all-zero value graphs.
+- Added dataset option for choosing dataset for pie graphs to draw.
+- Fixed legend display for stacked bar and line graphs and population pyramid.
+- Fixed legend display for multi-dataset graphs starting with 0 values.
+- Fixed magnification of tooltips in subgraphs.
+- Fixed incorrect position of crosshairs when magnification enabled.
+- Fixed axis text when using force_assoc and value with a key of 0.
+- Fixed overlapped tooltips from internal edges of 3D polar area graphs.
+
+Version 3.1 (02/08/2019)
+-----------
+- Added subgraph support.
+- Added magnifier options.
+- Added support for using figures as patterns.
+
+Version 3.0.1 (14/06/2019)
+-------------
+- Added text formatting classes to prevent localised numbers in SVG attributes.
+- Fixed data label click show and fade on pages with multiple graphs.
+
+Version 3.0 (14/03/2019)
+-----------
+- All classes are now in Goat1000\SVGGraph\ namespace.
+- PSR-4 autoloader required for loading class files.
+- Added autoloader.php for anyone not using a framework with PSR-4 autoloader.
+- Values, colours and links must now be set using functions, not directly.
+- Added EmptyGraph type for using shapes and labels without data.
+- Added use_iconv and use_mbstring options.
+- Added line_breaks option for line graphs.
+- Split redundant code out into traits.
+- Removed compat_events code and option.
+- Fixed tooltips going off edge of small graphs on same page as larger graphs.
+- Fixed auto tail length for custom labels.
+- Fixed edge shading on 3D polar area graphs.
+
+Version 2.30 (04/01/2019)
+------------
+- Added "image" shape support.
+- Added "marker" shape support.
+- Added "figure" option for creating predefined shapes.
+- Added "figure" shape support.
+- Added "figure" marker support.
+- Improved axis label positioning.
+
+Version 2.29 (09/10/2018)
+------------
+- Added context menu options.
+- Added "box" division and subdivision style.
+- Added axis_text_location option for text position on graphs with negative
+  values.
+- Moved axis measurement and drawing out of GridGraph and subclasses into new
+  DisplayAxis classes.
+- Replaced GetFirst() and ArrayOption() functions with GetOption().
+
+Version 2.28 (23/07/2018)
+------------
+- Added text measurement class using font metrics and/or character widths.
+
+Version 2.27 (28/03/2018)
+------------
+- Added support for multiple Y-axes using dataset_axis option.
+- Added support for best-fit lines on bubble graphs.
+- Added line_figure and line_figure_closed options for drawing shapes on line
+  graphs.
+- Fixed crosshairs being left behind when cursor moved out of document.
+- Fixed broken bars when all values in stacked grouped 3D bar and cylinder
+  graphs negative.
+
+Version 2.26 (10/01/2018)
+------------
+- Added "auto" option for data label tail length.
+- Added data_label_same_size option for more consistent labels.
+- Setting data_label_round for line or plain labels now uses a circular
+  bounding box.
+- Added circle, square, linecircle, linebox, linesquare and line2 label styles.
+- Added tail end options for new label styles.
+- Added no_tspan option for compatibility with renderers that don't support
+  tspan elements fully.
+
+Version 2.25 (12/10/2017)
+------------
+- Added 3D polar area graph.
+- Added 3D exploded pie graph.
+- Added support for datetime keys in shapes and labels.
+- 3D pie graph sides are now drawn correctly when end_angle used.
+- Improved PHP7 compatibility.
+- Moved guideline code into separate file.
+- Fixed display of semi-donut graph when there is a single value.
+- Fixed display of multi-line axis text on horizontal graphs.
+- Fixed multi-line text alignment when minifying is disabled.
+- Fixed legend_show_empty behaviour inconsistencies.
+- Fixed incorrect legend size when containing numeric strings.
+- Fixed missing bar tops on stacked grouped 3D bar graphs.
+
 Version 2.24.1 (21/08/2017)
 --------------
 - Added stacked bar and line graph.
